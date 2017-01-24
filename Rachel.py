@@ -286,6 +286,8 @@ class RachelTest(ScriptedLoadableModuleTest):
     volumeNode = slicer.util.getNode(pattern="FA")
     logic = RachelLogic()
     self.assertIsNotNone( logic.hasImageData(volumeNode) )"""
+    
+    #transformation part for the homework
 
     createModelsLogic = slicer.modules.createmodels.logic()
     node = createModelsLogic.CreateCoordinate(20,2)
