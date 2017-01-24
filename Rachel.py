@@ -287,6 +287,8 @@ class RachelTest(ScriptedLoadableModuleTest):
     volumeNode = slicer.util.getNode(pattern="FA")
     logic = RachelLogic()
     self.assertIsNotNone( logic.hasImageData(volumeNode) )"""
+    
+    #fiducial lists
 
     alphaPoints = vtk.vtkPoints()
     betaPoints = vtk.vtkPoints()
