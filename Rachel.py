@@ -3,6 +3,7 @@ import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
+import numpy
 
 #
 # Rachel
@@ -287,17 +288,38 @@ class RachelTest(ScriptedLoadableModuleTest):
     logic = RachelLogic()
     self.assertIsNotNone( logic.hasImageData(volumeNode) )"""
 
-    createModelsLogic = slicer.modules.createmodels.logic()
-    node = createModelsLogic.CreateCoordinate(20,2)
-    node.SetName('Node')
-    model = slicer.vtkMRMLLinearTransformNode()
-    model.SetName('PreModelToRas')
-    slicer.mrmlScene.AddNode(model)
-    transformation = vtk.vtkTransform()
-    transformation.PreMultiply()
-    transformation.Translate(50, 0, 0)
-    transformation.Update()
-    model.SetAndObserveTransformToParent(transformation)
-    node.SetAndObserveTransformNodeID(model.GetID())
+    alphaPoints = vtk.vtkPoints()
+    betaPoints = vtk.vtkPoints()
+
+    transformNode = slicer.vtkMRMLLinearTransformNode()
+    transformNode.SetName('Node')
+    slicer.mrmlScene.AddNode(transformNode)
+
+    alphaFids = slicer.vtkMRMLMarkupsFiducialNode()
+    alphaFids.SetName('RasPoints')
+    slicer.mrmlScene.AddNode(alphaFids)
+
+    betaFids = slicer.vtkMRMLMarkupsFiducialNode()
+    betaFids.SetName('ReferencePoints')
+    slicer.mrmlScene.AddNode(betaFids)
+    betaFids.GetDisplayNode().SetSelectedColor(1,1,0)
+
+    N = 10
+    Sigma = 2
+    Scale = 100.0
+    fromNormCoordinates = numpy.random.rand(N, 3) # An array of random numbers
+    noise = numpy.random.normal(0.0, Sigma, N*3)
+    for i in range(N):
+      x = (fromNormCoordinates[i, 0] - 0.5) * Scale
+      y = (fromNormCoordinates[i, 1] - 0.5) * Scale
+      z = (fromNormCoordinates[i, 2] - 0.5) * Scale
+      alphaFids.AddFiducial(x, y, z)
+      alphaPoints.InsertNextPoint(x, y, z)
+      xx = x+noise[i*3]
+      yy = y+noise[i*3+1]
+      zz = z+noise[i*3+2]
+      betaFids.AddFiducial(xx, yy, zz)
+      betaPoints.InsertNextPoint(xx, yy, zz)
+
 
     self.delayDisplay('Test passed!')
