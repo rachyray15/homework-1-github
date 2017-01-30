@@ -335,5 +335,39 @@ class RachelTest(ScriptedLoadableModuleTest):
     referenceCoordinateModel.GetDisplayNode().SetColor(0, 0, 1)
 
     referenceCoordinateModel.SetAndObserveTransformNodeID(referenceToRas.GetID())
+    
+    #code for homework due January 31
+    
+    landmarkTransform = vtk.vtkLandmarkTransform()
+    landmarkTransform.SetSourceLandmarks(alphaPoints)
+    landmarkTransform.SetTargetLandmarks(betaPoints)
+    landmarkTransform.SetModeToRigidBody()
+    landmarkTransform.Update()
+
+    alphaToBetaMatrix = vtk.vtkMatrix4x4()
+    landmarkTransform.GetMatrix(alphaToBetaMatrix)
+
+    det = alphaToBetaMatrix.Determinant()
+    if det < 1e-8:
+        print 'Unstable registration. Check input for collinear points.'
+
+    referenceToRas.SetMatrixTransformToParent(alphaToBetaMatrix)
+
+    average = 0.0
+    numbersSoFar = 0
+
+    for i in range(N):
+        numbersSoFar = numbersSoFar + 1
+        a = alphaPoints.GetPoint(i)
+        pointA_Alpha = numpy.array(a)
+        pointA_Alpha = numpy.append(pointA_Alpha, 1)
+        pointA_Beta = alphaToBetaMatrix.MultiplyFloatPoint(pointA_Alpha)
+        b = betaPoints.GetPoint(i)
+        pointB_Beta = numpy.array(b)
+        pointB_Beta = numpy.append(pointB_Beta, 1)
+        distance = numpy.linalg.norm(pointA_Beta - pointB_Beta)
+        average = average + (distance - average) / numbersSoFar
+
+    print "Average distance after registration: " + str(average)
 
     self.delayDisplay('Test passed!')
