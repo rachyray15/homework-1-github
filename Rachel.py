@@ -369,5 +369,12 @@ class RachelTest(ScriptedLoadableModuleTest):
         average = average + (distance - average) / numbersSoFar
 
     print "Average distance after registration: " + str(average)
+    
+    #code for homework due February 2
+
+    targetPoint_Reference = numpy.array([0,0,0,1])
+    targetPoint_Ras = rasToReferenceMatrix.MultiplyFloatPoint(targetPoint_Reference)
+    d = numpy.linalg.norm(targetPoint_Reference - targetPoint_Ras)
+    print "TRE: " + str(d)
 
     self.delayDisplay('Test passed!')
