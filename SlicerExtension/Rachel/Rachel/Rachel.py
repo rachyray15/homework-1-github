@@ -308,75 +308,80 @@ class RachelTest(ScriptedLoadableModuleTest):
     slicer.mrmlScene.AddNode(betaFids)
     betaFids.GetDisplayNode().SetSelectedColor(1,1,0)
 
-    N = 10
+    N = 20
     Sigma = 2
     Scale = 100.0
+    targetPoint_Reference = numpy.array([0, 0, 0, 1])
     fromNormCoordinates = numpy.random.rand(N, 3) # An array of random numbers
     noise = numpy.random.normal(0.0, Sigma, N*3)
     for i in range(N):
-      x = (fromNormCoordinates[i, 0] - 0.5) * Scale
-      y = (fromNormCoordinates[i, 1] - 0.5) * Scale
-      z = (fromNormCoordinates[i, 2] - 0.5) * Scale
-      alphaFids.AddFiducial(x, y, z)
-      alphaPoints.InsertNextPoint(x, y, z)
-      xx = x+noise[i*3]
-      yy = y+noise[i*3+1]
-      zz = z+noise[i*3+2]
-      betaFids.AddFiducial(xx, yy, zz)
-      betaPoints.InsertNextPoint(xx, yy, zz)
+        x = (fromNormCoordinates[i, 0] - 0.5) * Scale
+        y = (fromNormCoordinates[i, 1] - 0.5) * Scale
+        z = (fromNormCoordinates[i, 2] - 0.5) * Scale
+        alphaFids.AddFiducial(x, y, z)
+        alphaPoints.InsertNextPoint(x, y, z)
+        xx = x+noise[i*3]
+        yy = y+noise[i*3+1]
+        zz = z+noise[i*3+2]
+        betaFids.AddFiducial(xx, yy, zz)
+        betaPoints.InsertNextPoint(xx, yy, zz)
 
-    #code for homework due January 27
+        #code for homework due January 27
 
-    createModelsLogic = slicer.modules.createmodels.logic()
-    rasCoordinateModel = createModelsLogic.CreateCoordinate(25, 2)
-    rasCoordinateModel.SetName('RasCoordinateModel')
-    referenceCoordinateModel = createModelsLogic.CreateCoordinate(20, 2)
-    referenceCoordinateModel.SetName('ReferenceCoordinateModel')
-    rasCoordinateModel.GetDisplayNode().SetColor(1, 0, 0)
-    referenceCoordinateModel.GetDisplayNode().SetColor(0, 0, 1)
+        createModelsLogic = slicer.modules.createmodels.logic()
+        rasCoordinateModel = createModelsLogic.CreateCoordinate(25, 2)
+        rasCoordinateModel.SetName('RasCoordinateModel')
+        referenceCoordinateModel = createModelsLogic.CreateCoordinate(20, 2)
+        referenceCoordinateModel.SetName('ReferenceCoordinateModel')
+        rasCoordinateModel.GetDisplayNode().SetColor(1, 0, 0)
+        referenceCoordinateModel.GetDisplayNode().SetColor(0, 0, 1)
 
-    referenceCoordinateModel.SetAndObserveTransformNodeID(referenceToRas.GetID())
+        referenceCoordinateModel.SetAndObserveTransformNodeID(referenceToRas.GetID())
 
-    #code for homework due January 31
+        #code for homework due January 31
 
-    landmarkTransform = vtk.vtkLandmarkTransform()
-    landmarkTransform.SetSourceLandmarks(alphaPoints)
-    landmarkTransform.SetTargetLandmarks(betaPoints)
-    landmarkTransform.SetModeToRigidBody()
-    landmarkTransform.Update()
+        landmarkTransform = vtk.vtkLandmarkTransform()
+        landmarkTransform.SetSourceLandmarks(alphaPoints)
+        landmarkTransform.SetTargetLandmarks(betaPoints)
+        landmarkTransform.SetModeToRigidBody()
+        landmarkTransform.Update()
 
-    rasToReferenceMatrix = vtk.vtkMatrix4x4()
-    landmarkTransform.GetMatrix(rasToReferenceMatrix)
+        referenceToRasMatrix = vtk.vtkMatrix4x4()
+        landmarkTransform.GetMatrix(referenceToRasMatrix)
 
-    det = rasToReferenceMatrix.Determinant()
-    if det < 1e-8:
-        print 'Unstable registration. Check input for collinear points.'
+        det = referenceToRasMatrix.Determinant()
+        if det < 1e-8:
+            print 'Unstable registration. Check input for collinear points.'
 
-    referenceToRas.SetMatrixTransformToParent(rasToReferenceMatrix)
+        referenceToRas.SetMatrixTransformToParent(referenceToRasMatrix)
 
-    average = 0.0
-    numbersSoFar = 0
+        targetPoint_Ras = referenceToRasMatrix.MultiplyFloatPoint(targetPoint_Reference)
+        distance_TRE = numpy.linalg.norm(targetPoint_Reference - targetPoint_Ras)
+        print "TRE: " + str(distance_TRE)
 
-    for i in range(N):
-        numbersSoFar = numbersSoFar + 1
-        a = alphaPoints.GetPoint(i)
-        pointA_Alpha = numpy.array(a)
-        pointA_Alpha = numpy.append(pointA_Alpha, 1)
-        pointA_Beta = rasToReferenceMatrix.MultiplyFloatPoint(pointA_Alpha)
-        b = betaPoints.GetPoint(i)
-        pointB_Beta = numpy.array(b)
-        pointB_Beta = numpy.append(pointB_Beta, 1)
-        distance = numpy.linalg.norm(pointA_Beta - pointB_Beta)
-        average = average + (distance - average) / numbersSoFar
+        average_FRE = 0.0
+        numbersSoFar = 0
 
-    print "Average distance after registration: " + str(average)
+        for i in range(N):
+            numbersSoFar = numbersSoFar + 1
+            a = alphaPoints.GetPoint(i)
+            pointA_Alpha = numpy.array(a)
+            pointA_Alpha = numpy.append(pointA_Alpha, 1)
+            pointA_Beta = referenceToRasMatrix.MultiplyFloatPoint(pointA_Alpha)
+            b = betaPoints.GetPoint(i)
+            pointB_Beta = numpy.array(b)
+            pointB_Beta = numpy.append(pointB_Beta, 1)
+            distance_FRE = numpy.linalg.norm(pointA_Beta - pointB_Beta)
+            average_FRE = average_FRE + (distance_FRE - average_FRE) / numbersSoFar
+        print "Average distance after registration: " + str(average_FRE)
 
     #code for homework due February 2
 
-    targetPoint_Reference = numpy.array([0,0,0,1])
-    targetPoint_Ras = rasToReferenceMatrix.MultiplyFloatPoint(targetPoint_Reference)
-    d = numpy.linalg.norm(targetPoint_Reference - targetPoint_Ras)
-    print "TRE: " + str(d)
+    #targetPoint_Reference = numpy.array([0, 0, 0, 1])
+    #targetPoint_Ras = referenceToRasMatrix.MultiplyFloatPoint(targetPoint_Reference)
+    #d = numpy.linalg.norm(targetPoint_Reference - targetPoint_Ras)
+    #print "TRE: " + str(d)
+
 
 
     self.delayDisplay('Test passed!')
