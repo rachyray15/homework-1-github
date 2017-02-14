@@ -7,17 +7,17 @@ import numpy
 
 
 #
-# Danielle
+# Rachel
 #
 
-class Danielle(ScriptedLoadableModule):
+class Rachel(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "Danielle"  # TODO make this more human readable by adding spaces
+        self.parent.title = "Rachel"  # TODO make this more human readable by adding spaces
         self.parent.categories = ["Examples"]
         self.parent.dependencies = []
         self.parent.contributors = ["John Doe (AnyWare Corp.)"]  # replace with "Firstname Lastname (Organization)"
@@ -32,10 +32,10 @@ class Danielle(ScriptedLoadableModule):
 
 
 #
-# DanielleWidget
+# RachelWidget
 #
 
-class DanielleWidget(ScriptedLoadableModuleWidget):
+class RachelWidget(ScriptedLoadableModuleWidget):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -55,69 +55,28 @@ class DanielleWidget(ScriptedLoadableModuleWidget):
         # Layout within the dummy collapsible button
         parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
 
-        #
-        # input volume selector
-        #
-        self.inputSelector = slicer.qMRMLNodeComboBox()
-        self.inputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-        self.inputSelector.selectNodeUponCreation = True
-        self.inputSelector.addEnabled = False
-        self.inputSelector.removeEnabled = False
-        self.inputSelector.noneEnabled = False
-        self.inputSelector.showHidden = False
-        self.inputSelector.showChildNodeTypes = False
-        self.inputSelector.setMRMLScene(slicer.mrmlScene)
-        self.inputSelector.setToolTip("Pick the input to the algorithm.")
-        parametersFormLayout.addRow("Input Volume: ", self.inputSelector)
+        #EM tool selector
+        self.emSelector = slicer.qMRMLNodeComboBox()
+        self.emSelector.nodeTypes = ['vtkMRMLLinearTransformNode']
+        self.emSelector.setMRMLScene(slicer.mrmlScene)
+        parametersFormLayout.addRow("EM tool tip transform: ", self.emSelector)
 
-        #
-        # output volume selector
-        #
-        self.outputSelector = slicer.qMRMLNodeComboBox()
-        self.outputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-        self.outputSelector.selectNodeUponCreation = True
-        self.outputSelector.addEnabled = True
-        self.outputSelector.removeEnabled = True
-        self.outputSelector.noneEnabled = True
-        self.outputSelector.showHidden = False
-        self.outputSelector.showChildNodeTypes = False
-        self.outputSelector.setMRMLScene(slicer.mrmlScene)
-        self.outputSelector.setToolTip("Pick the output to the algorithm.")
-        parametersFormLayout.addRow("Output Volume: ", self.outputSelector)
+        #Optical tool selector
+        self.opticalSelector = slicer.qMRMLNodeComboBox()
+        self.opticalSelector.nodeTypes = ["vtkMRMLLinearTransformNode"]
+        self.opticalSelector.setMRMLScene(slicer.mrmlScene)
+        parametersFormLayout.addRow("Opical Tool Tip Transform: ", self.opticalSelector)
 
-        #
-        # threshold value
-        #
-        self.imageThresholdSliderWidget = ctk.ctkSliderWidget()
-        self.imageThresholdSliderWidget.singleStep = 0.1
-        self.imageThresholdSliderWidget.minimum = -100
-        self.imageThresholdSliderWidget.maximum = 100
-        self.imageThresholdSliderWidget.value = 0.5
-        self.imageThresholdSliderWidget.setToolTip(
-            "Set threshold value for computing the output image. Voxels that have intensities lower than this value will set to zero.")
-        parametersFormLayout.addRow("Image threshold", self.imageThresholdSliderWidget)
-
-        #
-        # check box to trigger taking screen shots for later use in tutorials
-        #
-        self.enableScreenshotsFlagCheckBox = qt.QCheckBox()
-        self.enableScreenshotsFlagCheckBox.checked = 0
-        self.enableScreenshotsFlagCheckBox.setToolTip(
-            "If checked, take screen shots for tutorials. Use Save Data to write them to disk.")
-        parametersFormLayout.addRow("Enable Screenshots", self.enableScreenshotsFlagCheckBox)
-
-        #
-        # Apply Button
-        #
+        #Apply Button
         self.applyButton = qt.QPushButton("Apply")
         self.applyButton.toolTip = "Run the algorithm."
         self.applyButton.enabled = False
         parametersFormLayout.addRow(self.applyButton)
 
-        # connections
+        #Connections
         self.applyButton.connect('clicked(bool)', self.onApplyButton)
-        self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
-        self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+        self.emSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+        self.opticalSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
 
         # Add vertical spacer
         self.layout.addStretch(1)
@@ -129,15 +88,38 @@ class DanielleWidget(ScriptedLoadableModuleWidget):
         pass
 
     def onSelect(self):
-        self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode()
+        self.applyButton.enabled = self.emSelector.currentNode() and self.opticalSelector.currentNode()
 
     def onApplyButton(self):
         logic = RachelLogic()
-        enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
-        imageThreshold = self.imageThresholdSliderWidget.value
-        logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), imageThreshold,
-                  enableScreenshotsFlag)
+        emTipTransform = self.emSelector.currentNode()
+        if emTipTransform == None:
+            return
+        opticalTipTransform = self.opticalSelector.currentNode()
+        if opticalTipTransform == None:
+            return
+        emTipTransform.AddObserver(slicer.vtkMRMLTransformNode.TransformModifiedEvent, self.onTransformModification)
+        opticalTipTransform.AddObserver(slicer.vtkMRMLTransformNode.TransformModifiedEvent, self.onTransformModification)
 
+    def onTransformModification(self, caller, event):
+        print 'Object Moved'
+        emTipTransform = self.emSelector.currentNode()
+        if emTipTransform == None:
+            return
+        opticalTipTransform = self.opticalSelector.currentNode()
+        if opticalTipTransform == None:
+            return
+        emTip_emTip = [0, 0, 0, 1]
+        opticalTip_opticalTip = [0, 0, 0, 1]
+        emTipToRasMatrix = vtk.vtkMatrix4x4()
+        emTipTransform.GetMatrixTransformToWorld(emTipToRasMatrix)
+        emTip_Ras = numpy.array(emTipToRasMatrix.MultiplyFloatPoint(emTip_emTip))
+        opticalTipToRasMatrix = vtk.vtkMatrix4x4()
+        opticalTipTransform.GetMatrixTransformToWorld(opticalTipToRasMatrix)
+        opticalTip_Ras = numpy.array(opticalTipToRasMatrix.MultiplyFloatPoint(opticalTip_opticalTip))
+        tip_distance = numpy.linalg.norm(emTip_Ras - opticalTip_Ras)
+        print "The distance between the tool tips is: " + str(tip_distance)
+        return
 
 #
 # RachelLogic
